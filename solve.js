@@ -1,5 +1,5 @@
 import { load } from "cheerio";
-import axios from "axios";
+import axios, { all } from "axios";
 import { appendFile } from "fs";
 
 // URL новостного сайта
@@ -25,7 +25,7 @@ const fetchNews = async (iter) => {
     }
 };
 
-const parseAllPages = async () => {
+const parseFeed = async () => {
     let iter = 1;
     let result = [];
     let currentFetch;
@@ -40,15 +40,6 @@ const parseAllPages = async () => {
     }
     return result;
 };
-
-// // Запуск парсинга номеров страниц
-// parseAllPages()
-//     .then((allNumbers) => {
-//         console.log("Все заголовки:", allNumbers);
-//     })
-//     .catch((error) => {
-//         console.error('Ошибка при парсинге:', error);
-//     });
 
 
 const fetchOnePage = async (id) => {
@@ -103,7 +94,7 @@ const fetchOnePage = async (id) => {
 
         // текст
         $('p._text_5hrm4_111._text-width_5hrm4_111').each((_, element) => {
-            page["content"] += $(element).text()
+            page["content"] += $(element).text().replace("\n", " ");
         });
 
         return page;
@@ -113,12 +104,31 @@ const fetchOnePage = async (id) => {
     }
 };
 
-fetchOnePage(116986).then(result => {
-    appendFile("result.json", JSON.stringify(result, null, 2), (err) => {
-        if (err) {
-            console.error('Ошибка при добавлении в файл:', err);
-        } else {
-            console.log('Строка успешно добавлена в файл!');
-        }
+const parseAllPages = async (ids) => {
+    let result = [];
+    for (const id of ids) {
+        result.push(await fetchOnePage(id))
+    }
+    return result;
+}
+
+
+parseFeed()
+    .then((ids) => {
+        parseAllPages(ids)
+            .then((result) => {
+                appendFile("result.json", JSON.stringify(result, null, 2), (err) => {
+                    if (err) {
+                        console.error('Ошибка при добавлении в файл:', err);
+                    } else {
+                        console.log('Строка успешно добавлена в файл!');
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error('Ошибка при парсинге:', error);
+            });
     })
-})
+    .catch((error) => {
+        console.error('Ошибка при парсинге:', error);
+    });
